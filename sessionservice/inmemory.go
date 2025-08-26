@@ -73,15 +73,18 @@ func (s *inMemoryService) Get(ctx context.Context, req *GetRequest) (StoredSessi
 	}
 
 	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	res, ok := s.sessions.Get(sessionKey(req.ID).Encode())
-	if !ok {
-		return nil, fmt.Errorf("session %+v not found", req.ID)
-	}
+	s.mu.RUnlock()
 
-	// TODO: handle req.NumRecentEvents and req.After
-	return res, nil
+	if ok {
+		// TODO: handle req.NumRecentEvents and req.After
+		return res, nil
+	}
+	return s.Create(ctx, &CreateRequest{
+		AppName:   appName,
+		UserID:    userID,
+		SessionID: sessionID,
+	})
 }
 
 // List returns a list of sessions.

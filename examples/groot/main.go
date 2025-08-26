@@ -60,13 +60,12 @@ func main() {
 	}
 
 	r, err := runner.NewGRootRunner(&runner.GRootRunnerConfig{
-		GRootEndpoint:  grootEndpoint,
-		GRootAPIKey:    os.Getenv("GROOT_KEY"),
-		EventLog:       logfile,
-		ResumeEventLog: resume,
-		AppName:        "hello_world",
-		RootAgent:      agent,
-	})
+		GRootEndpoint: grootEndpoint,
+		GRootAPIKey:   os.Getenv("GROOT_KEY"),
+		EventLog:      logfile,
+		AppName:       "hello_world",
+		RootAgent:     agent,
+	}, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
