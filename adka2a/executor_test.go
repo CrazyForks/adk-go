@@ -123,7 +123,7 @@ func TestExecutor_Execute(t *testing.T) {
 				{LLMResponse: modelResponseFromParts(&genai.Part{Text: ", world!"})},
 			},
 			wantEvents: []a2a.Event{
-				a2a.NewStatusUpdateEvent(task, a2a.TaskStateSubmitted, a2a.NewMessage(a2a.MessageRoleUser, a2a.TextPart{Text: "hi"})),
+				a2a.NewStatusUpdateEvent(task, a2a.TaskStateSubmitted, nil),
 				a2a.NewStatusUpdateEvent(task, a2a.TaskStateWorking, nil),
 				a2a.NewArtifactEvent(task, a2a.TextPart{Text: "Hello"}),
 				a2a.NewArtifactUpdateEvent(task, a2a.NewArtifactID(), a2a.TextPart{Text: ", world!"}),

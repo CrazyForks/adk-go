@@ -94,7 +94,7 @@ func (e *Executor) Execute(ctx context.Context, reqCtx a2asrv.RequestContext, qu
 	task := reqCtx.Task
 	if task == nil {
 		task = &a2a.Task{ID: reqCtx.TaskID, ContextID: reqCtx.ContextID}
-		event := a2a.NewStatusUpdateEvent(task, a2a.TaskStateSubmitted, msg)
+		event := a2a.NewStatusUpdateEvent(task, a2a.TaskStateSubmitted, nil)
 		if err := queue.Write(ctx, event); err != nil {
 			return fmt.Errorf("failed to setup a task: %w", err)
 		}
