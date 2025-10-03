@@ -220,7 +220,7 @@ func TestExecutor_Execute(t *testing.T) {
 			sessionService := &testSessionService{Service: sessionservice.Mem(), createErr: tc.createSessionFails}
 			config := &ExecutorConfig{AppName: agent.Name(), Agent: agent, SessionService: sessionService}
 			executor := NewExecutor(config)
-			queue := &testQueue{Queue: eventqueue.NewInMemoryQueue(100), writeErr: tc.queueWriteFails}
+			queue := &testQueue{Queue: eventqueue.NewInMemoryQueue(10), writeErr: tc.queueWriteFails}
 			reqCtx := a2asrv.RequestContext{TaskID: task.ID, ContextID: task.ContextID, Request: tc.request}
 			if tc.request.Message != nil && tc.request.Message.TaskID == task.ID {
 				reqCtx.Task = task
@@ -243,10 +243,27 @@ func TestExecutor_Execute(t *testing.T) {
 }
 
 func TestExecutor_Cancel(t *testing.T) {
+	task := &a2a.Task{ID: a2a.NewTaskID(), ContextID: a2a.NewContextID()}
 	executor := NewExecutor(&ExecutorConfig{})
-	err := executor.Cancel(context.Background(), a2asrv.RequestContext{}, nil)
+	reqCtx := a2asrv.RequestContext{TaskID: task.ID, ContextID: task.ContextID}
+
+	queue := &testQueue{Queue: eventqueue.NewInMemoryQueue(10)}
+	err := executor.Cancel(t.Context(), reqCtx, queue)
 	if err == nil {
-		t.Error("Cancel() expected an error, got nil")
+		t.Fatalf("expected Cancel() to fail with no Task on request")
+	}
+
+	reqCtx.Task = task
+	err = executor.Cancel(t.Context(), reqCtx, queue)
+	if err != nil {
+		t.Fatalf("expected Cancel() to succeed, got %v", err)
+	}
+	if len(queue.events) != 1 {
+		t.Fatalf("expected a single event to be written, got %v", queue.events)
+	}
+	event := queue.events[0].(*a2a.TaskStatusUpdateEvent)
+	if event.Status.State != a2a.TaskStateCanceled {
+		t.Fatalf("expected a TaskStateCanceled status update, got %v", event)
 	}
 }
 

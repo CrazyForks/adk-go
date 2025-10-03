@@ -125,7 +125,15 @@ func (e *Executor) Execute(ctx context.Context, reqCtx a2asrv.RequestContext, qu
 }
 
 func (e *Executor) Cancel(ctx context.Context, reqCtx a2asrv.RequestContext, queue eventqueue.Queue) error {
-	return fmt.Errorf("cancelation not supported")
+	task := reqCtx.Task
+	if task == nil {
+		return fmt.Errorf("no task provided")
+	}
+	event := a2a.NewStatusUpdateEvent(task, a2a.TaskStateCanceled, nil)
+	if err := queue.Write(ctx, event); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Processing failures should be delivered as Task failed events. An error is returned from this method if an event write fails.
