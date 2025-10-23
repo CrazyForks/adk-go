@@ -21,7 +21,6 @@ import (
 	"github.com/a2aproject/a2a-go/a2a"
 	"google.golang.org/adk/adka2a"
 	"google.golang.org/adk/agent"
-	"google.golang.org/adk/model"
 	"google.golang.org/adk/session"
 	"google.golang.org/genai"
 )
@@ -93,7 +92,7 @@ func toMissingRemoteSessionParts(ctx agent.InvocationContext, events session.Eve
 	lastRemoteResponseIndex := -1
 	for i := events.Len() - 1; i >= 0; i-- {
 		event := events.At(i)
-		if event.LLMResponse != nil && event.LLMResponse.Content != nil {
+		if event.LLMResponse.Content != nil {
 			partCount += len(event.Content.Parts)
 		}
 		if event.Author == ctx.Agent().Name() {
@@ -124,10 +123,9 @@ func toMissingRemoteSessionParts(ctx agent.InvocationContext, events session.Eve
 
 func presentAsUserMessage(ctx agent.InvocationContext, agentEvent *session.Event) *session.Event {
 	event := session.NewEvent(ctx.InvocationID())
-	event.LLMResponse = &model.LLMResponse{}
 	event.Author = "user"
 
-	if agentEvent.LLMResponse == nil || agentEvent.Content == nil {
+	if agentEvent.Content == nil {
 		return event
 	}
 

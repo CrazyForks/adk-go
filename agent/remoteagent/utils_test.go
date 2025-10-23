@@ -60,11 +60,11 @@ func newEventFromParts(author string, parts ...*genai.Part) *session.Event {
 	if author == "user" {
 		role = genai.RoleUser
 	}
-	response := &model.LLMResponse{}
+	event := &session.Event{Author: author}
 	if len(parts) > 0 {
-		response.Content = genai.NewContentFromParts(parts, role)
+		event.Content = genai.NewContentFromParts(parts, role)
 	}
-	return &session.Event{Author: author, LLMResponse: response}
+	return event
 }
 
 func TestGetUserFunctionCallAt(t *testing.T) {
@@ -211,7 +211,7 @@ func TestToMissingRemoteSessionParts(t *testing.T) {
 			events: []*session.Event{
 				{
 					Author: remoteName,
-					LLMResponse: &model.LLMResponse{
+					LLMResponse: model.LLMResponse{
 						Content:        genai.NewContentFromParts([]*genai.Part{{Text: "hi"}}, genai.RoleModel),
 						CustomMetadata: adka2a.ToCustomMetadata(a2a.NewTaskID(), "ctxID-123"),
 					},
