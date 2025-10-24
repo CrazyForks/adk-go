@@ -20,13 +20,20 @@ import (
 	"google.golang.org/adk/agent"
 )
 
-var _ a2asrv.AgentCardProducer = (*CardProducer)(nil)
+var _ a2asrv.AgentCardProducer = (*cardProducer)(nil)
 
-type CardProducer struct {
-	Agent agent.Agent
+type cardProducer struct {
+	card *a2a.AgentCard
 }
 
-func (cp *CardProducer) Card() *a2a.AgentCard {
-	// TODO(yarolegovich): implement
-	return &a2a.AgentCard{}
+func EmptyCardProducer() a2asrv.AgentCardProducer {
+	return &cardProducer{card: nil}
+}
+
+func (cp *cardProducer) Card() *a2a.AgentCard {
+	return cp.card
+}
+
+func GetAgentSkills(agent agent.Agent) []a2a.AgentSkill {
+	return nil
 }

@@ -17,6 +17,7 @@ package web
 
 import (
 	"embed"
+	"encoding/json"
 	"io/fs"
 	"log"
 	"net/http"
@@ -28,10 +29,12 @@ import (
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 
+	"github.com/a2aproject/a2a-go/a2a"
 	"github.com/a2aproject/a2a-go/a2agrpc"
 	"github.com/a2aproject/a2a-go/a2asrv"
 	"github.com/gorilla/mux"
 	"google.golang.org/adk/adka2a"
+	"google.golang.org/adk/agent"
 	"google.golang.org/adk/cmd/launcher/adk"
 	"google.golang.org/adk/cmd/restapi/config"
 	"google.golang.org/adk/cmd/restapi/handlers"
@@ -116,16 +119,7 @@ func Serve(c *WebConfig, adkConfig *adk.Config) {
 
 	var handler http.Handler
 	if c.ServeA2A {
-		grpcSrv := grpc.NewServer()
-		newA2AHandler(adkConfig).RegisterWith(grpcSrv)
-		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.ProtoMajor == 2 && strings.HasPrefix(r.Header.Get("Content-Type"), "application/grpc") {
-				grpcSrv.ServeHTTP(w, r)
-			} else {
-				rBase.ServeHTTP(w, r)
-			}
-		})
-		handler = h2c.NewHandler(handler, &http2.Server{})
+		handler = setupA2AServer(c, adkConfig, rBase)
 	} else {
 		handler = rBase
 	}
@@ -135,17 +129,60 @@ func Serve(c *WebConfig, adkConfig *adk.Config) {
 	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(c.LocalPort), handler))
 }
 
-func newA2AHandler(serveConfig *adk.Config) *a2agrpc.GRPCHandler {
-	agent := serveConfig.AgentLoader.Root()
+func setupA2AServer(c *WebConfig, adkConfig *adk.Config, rBase *mux.Router) http.Handler {
+	rootAgent := adkConfig.AgentLoader.Root()
+
+	agentCard := a2a.AgentCard{
+		Name:               rootAgent.Name(),
+		Description:        rootAgent.Description(),
+		DefaultInputModes:  []string{"text/plain"},
+		DefaultOutputModes: []string{"text/plain"},
+		PreferredTransport: a2a.TransportProtocolGRPC,
+		Skills:             adka2a.GetAgentSkills(rootAgent),
+		Capabilities:       a2a.AgentCapabilities{Streaming: true},
+		// gRPC GetAgentCard() method will be serving empty card.
+		SupportsAuthenticatedExtendedCard: false,
+	}
+	rBase.HandleFunc("/.well-known/agent-card.json", func(w http.ResponseWriter, r *http.Request) {
+		grpcURL := "127.0.0.1:" + strconv.Itoa(c.LocalPort)
+		host := r.Header.Get("X-Forwarded-Host")
+		if host != "" {
+			grpcURL = "https://" + host
+		}
+		agentCard.URL = grpcURL
+
+		w.Header().Add("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(agentCard); err != nil {
+			log.Printf("agent card encoding failed: %v", err)
+		}
+	})
+
+	grpcSrv := grpc.NewServer()
+	grpcHandler := newA2AHandler(rootAgent, adkConfig)
+	grpcHandler.RegisterWith(grpcSrv)
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.ProtoMajor == 2 && strings.HasPrefix(r.Header.Get("Content-Type"), "application/grpc") {
+			grpcSrv.ServeHTTP(w, r)
+		} else {
+			rBase.ServeHTTP(w, r)
+		}
+	})
+	return h2c.NewHandler(handler, &http2.Server{})
+}
+
+func newA2AHandler(rootAgent agent.Agent, serveConfig *adk.Config) *a2agrpc.GRPCHandler {
 	executor := adka2a.NewExecutor(adka2a.ExecutorConfig{
 		RunnerConfig: runner.Config{
-			AppName:         agent.Name(),
-			Agent:           agent,
+			AppName:         rootAgent.Name(),
+			Agent:           rootAgent,
 			SessionService:  serveConfig.SessionService,
 			ArtifactService: serveConfig.ArtifactService,
 		},
 	})
 	reqHandler := a2asrv.NewHandler(executor, serveConfig.A2AOptions...)
-	grpcHandler := a2agrpc.NewHandler(&adka2a.CardProducer{Agent: agent}, reqHandler)
+	// AgentCard is served on /.well-known/agent-card.json
+	// TODO(yarolegovich): implement extended authenticated agent card serving, gRPC handler
+	// needs to know the public URL
+	grpcHandler := a2agrpc.NewHandler(adka2a.EmptyCardProducer(), reqHandler)
 	return grpcHandler
 }
