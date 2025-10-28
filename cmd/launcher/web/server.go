@@ -146,6 +146,6 @@ func newA2AHandler(serveConfig *adk.Config) *a2agrpc.GRPCHandler {
 		},
 	})
 	reqHandler := a2asrv.NewHandler(executor, serveConfig.A2AOptions...)
-	grpcHandler := a2agrpc.NewHandler(&adka2a.CardProducer{Agent: agent}, reqHandler)
+	grpcHandler := a2agrpc.NewHandler(reqHandler)
 	return grpcHandler
 }
