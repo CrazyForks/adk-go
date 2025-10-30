@@ -451,7 +451,7 @@ func TestRemoteAgent_ADK2A2A(t *testing.T) {
 			}
 			gotResponses := toLLMResponses(gotEvents)
 			if diff := cmp.Diff(tc.wantResponses, gotResponses, ignoreFields...); diff != "" {
-				t.Errorf("agent.Run() wrong result (+got,-want):\ngot = %+v\nwant = %+v\ndiff = %s", pretty(gotResponses), pretty(tc.wantResponses), diff)
+				t.Errorf("agent.Run() wrong result (+got,-want):\ngot = %+v\nwant = %+v\ndiff = %s", gotResponses, tc.wantResponses, diff)
 			}
 			for _, event := range gotEvents {
 				if _, ok := event.CustomMetadata[adka2a.ToADKMetaKey("response")]; !ok {
@@ -463,14 +463,6 @@ func TestRemoteAgent_ADK2A2A(t *testing.T) {
 			}
 		})
 	}
-}
-
-func pretty(v any) string {
-	str, err := json.MarshalIndent(v, "", " ")
-	if err != nil {
-		panic(err.Error())
-	}
-	return string(str)
 }
 
 func TestRemoteAgent_EmptyResultForEmptySession(t *testing.T) {
